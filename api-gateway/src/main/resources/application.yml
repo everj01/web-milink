@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Rutas
+      routes:
+        - id: servicio-enlaces
+          uri: lb://servicio-enlaces
+          predicates:
+            - Path=/api/enlaces/**,/r/**
+        - id: servicio-estadisticas
+          uri: lb://servicio-estadisticas
+          predicates:
+            - Path=/api/estadisticas/**
+      # CORS
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins: ${FRONTEND_URL:http://localhost:5173}
+            allowed-methods: GET,POST,OPTIONS
+            allowed-headers: "*"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}

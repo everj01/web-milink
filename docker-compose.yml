@@ -1,0 +1,72 @@
+services:
+
+  # Base de datos
+  postgres:
+    image: postgres:16
+    container_name: lr-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - datos_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 5s
+      retries: 10
+
+  # Microservicios
+  eureka-server:
+    build: ./eureka-server
+    container_name: lr-eureka
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: lr-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      - eureka-server
+
+  servicio-enlaces:
+    build: ./servicio-enlaces
+    container_name: lr-enlaces
+    environment:
+      DB_HOST: postgres
+      EUREKA_URL: http://eureka-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+  servicio-estadisticas:
+    build: ./servicio-estadisticas
+    container_name: lr-estadisticas
+    environment:
+      DB_HOST: postgres
+      EUREKA_URL: http://eureka-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: lr-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  datos_postgres:
